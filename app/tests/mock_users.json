@@ -1,0 +1,30 @@
+[
+    {
+        "name": "test1",
+        "login": "test1",
+        "hash_password": "test1",
+        "img": "app/static/img/default.png",
+        "email": "test1@mail.ru"
+    },
+    {
+        "name": "test2",
+        "login": "test2",
+        "hash_password": "test2",
+        "img": "app/static/img/default.png",
+        "email": "test2@mail.ru"
+    },
+    {
+        "name": "test3",
+        "login": "test3",
+        "hash_password": "test3",
+        "img": "app/static/img/default.png",
+        "email": "test3@mail.ru"
+    },
+    {
+        "name": "test4",
+        "login": "test4",
+        "hash_password": "test4",
+        "img": "app/static/img/default.png",
+        "email": "test4@mail.ru"
+    }
+]
