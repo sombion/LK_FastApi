@@ -1,4 +1,4 @@
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.orm import aliased
 
 from app.dao.base import BaseDAO
@@ -9,7 +9,7 @@ from app.users.models import Users
 
 class GroupDAO(BaseDAO):
     model = Groups
-    
+
     @classmethod
     async def create(cls, title: str, description: str, id_created: int):
         async with async_session_maker() as session:
@@ -21,9 +21,9 @@ class GroupDAO(BaseDAO):
             result = await session.execute(stmt)
             await session.commit()
             return result.scalar()
-        
+
     @classmethod
-    async def titles_with_members_count(cls):
+    async def titles_with_members_count(cls, user_id: int):
         async with async_session_maker() as session:
             query = (
                 select(
@@ -38,22 +38,22 @@ class GroupDAO(BaseDAO):
             )
             result = await session.execute(query)
             return result.mappings().all()
-    
+
 class MemberGroupsDAO(BaseDAO):
     model = MembersGroup
-    
-    
+
+
     @classmethod
-    async def find_group_in_user(cls, id_user):
+    async def find_group_in_user(cls, id_user: int):
         async with async_session_maker() as session:
             query = (
                 select(cls.model.id_group, Groups.title)
                 .join(Groups, cls.model.id_group == Groups.id)
-                .where(cls.model.id_user == id_user)
+                .where(cls.model.id_user == id_user, cls.model.is_member == True)
             )
             result = await session.execute(query)
             return result.mappings().all()
-    
+
     @classmethod
     async def create(cls, id_group: int, id_user: int):
         async with async_session_maker() as session:
@@ -64,7 +64,16 @@ class MemberGroupsDAO(BaseDAO):
             result = await session.execute(stmt)
             await session.commit()
             return result.scalar()
-       
+
+    @classmethod
+    async def accept(cls, members_group_id: int):
+        async with async_session_maker() as session:
+            stmt = update(cls.model).where(
+                cls.model.id==members_group_id
+            ).values(is_member=True)
+            await session.execute(stmt)
+            await session.commit()
+
     @classmethod
     async def delete_member(cls, id_group: int, id_user: int):
         async with async_session_maker() as session:
@@ -75,18 +84,18 @@ class MemberGroupsDAO(BaseDAO):
             result = await session.execute(stmt)
             await session.commit()
             return result.scalar()
-        
+
     @classmethod
     async def all_user_in_one_group(cls, id_group: int):
         async with async_session_maker() as session:
             query = (
                 select(cls.model.__table__.columns, Users.login)
                 .join(Users, cls.model.id_user == Users.id)
-                .where(cls.model.id_group == id_group)
+                .where(cls.model.id_group == id_group, cls.model.is_member == True)
             )
             result = await session.execute(query)
             return result.mappings().all()
-        
+
     @classmethod
     async def recommend_friends(cls, id_user: int):
         async with async_session_maker() as session:
@@ -114,5 +123,18 @@ class MemberGroupsDAO(BaseDAO):
                 .limit(5)
             )
 
+            result = await session.execute(query)
+            return result.mappings().all()
+
+
+    @classmethod
+    async def list_invite_in_group(cls, group_id: int):
+        async with async_session_maker() as session:
+            query = (
+                select(cls.model.id, Users.login, Users.user)
+                .join(Users, Users.id==cls.model.id_user)
+                .select_from(cls.model)
+                .where(cls.model.id_group==group_id, cls.model.is_member==False)
+            )
             result = await session.execute(query)
             return result.mappings().all()

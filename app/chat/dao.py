@@ -10,7 +10,7 @@ from app.users.models import Users
 
 class ChatDAO(BaseDAO):
     model = Chats
-    
+
     @classmethod
     async def detail_info_chat_friends(cls, id_chat):
         async with async_session_maker() as session:
@@ -24,7 +24,7 @@ class ChatDAO(BaseDAO):
             )
             result = await session.execute(query)
             return result.mappings().all()
-        
+
     @classmethod
     async def my_chats(cls, id_user: int):
         async with async_session_maker() as session:
@@ -45,30 +45,63 @@ class ChatDAO(BaseDAO):
             )
             result = await session.execute(query)
             return result.mappings().all()
-    
+
     @classmethod
     async def my_group_chats(cls, user_id):
         async with async_session_maker() as session:
-            group_ids_subq = (
-                select(Groups.id, Groups.title)
-                .join(MembersGroup, Groups.id == MembersGroup.id_group, isouter=True)
-                .where(
-                    or_(
-                        Groups.id_created == user_id,
-                        MembersGroup.id_user == user_id
-                    )
-                )
-                .distinct()
-                .subquery()
-            )
+            # group_ids_subq = (
+            #     select(Groups.id, Groups.title)
+            #     .join(MembersGroup, Groups.id == MembersGroup.id_group, isouter=True)
+            #     .where(
+            #         or_(
+            #             Groups.id_created == user_id,
+            #             and_(
+            #                 MembersGroup.id_user == user_id,
+            #                 MembersGroup.is_member == True
+            #             )
+            #         )
+            #     )
+            #     .distinct()
+            #     .subquery()
+            # )
 
-            group_chats = (
-                select(cls.model.__table__.columns, group_ids_subq.c.title)
-                .where(cls.model.id_group.in_(select(group_ids_subq.c.id)))
+            # group_chats = (
+            #     select(cls.model.__table__.columns, group_ids_subq.c.title)
+            #     .where(cls.model.id_group.in_(select(group_ids_subq.c.id)))
+            # )
+            # result = await session.execute(group_chats)
+            query = (
+                select(cls.model.__table__.columns, Groups.title)
+                .join(Groups, cls.model.id_group == Groups.id)
             )
-            result = await session.execute(group_chats)
+            result = await session.execute(query)
             return result.mappings().all()
-    
+
+    @classmethod
+    async def my_group_chat(cls, id_created: int):
+        async with async_session_maker() as session:
+            query = (
+                select(cls.model.id, Groups.title)
+                .select_from(Groups)
+                .join(cls.model, cls.model.id_group == Groups.id)
+                .where(Groups.id_created == id_created)
+            )
+            result = await session.execute(query)
+            return result.mappings().all()
+
+    @classmethod
+    async def invited_my_group_chat(cls, id_user: int):
+        async with async_session_maker() as session:
+            query = (
+                select(cls.model.id, Groups.title)
+                .select_from(MembersGroup)
+                .join(Groups, MembersGroup.id_group == Groups.id)
+                .join(cls.model, cls.model.id_group == MembersGroup.id_group)
+                .where(MembersGroup.id_user == id_user, MembersGroup.is_member == True)
+            )
+            result = await session.execute(query)
+            return result.mappings().all()
+
     @classmethod
     async def search_chat_two_user(cls, id_user: int, id_friends: int):
         async with async_session_maker() as session:
@@ -83,7 +116,7 @@ class ChatDAO(BaseDAO):
             )
             result = await session.execute(query)
             return result.scalar_one_or_none()
-    
+
     @classmethod
     async def create(cls, id_user: int | None, id_friends: int | None, id_group: int | None):
         async with async_session_maker() as session:
@@ -95,7 +128,7 @@ class ChatDAO(BaseDAO):
             result = await session.execute(stmt)
             await session.commit()
             return result.scalar()
-    
+
     @classmethod
     async def delete(cls, id_chat: int):
         async with async_session_maker() as session:
@@ -107,7 +140,7 @@ class ChatDAO(BaseDAO):
             result = await session.execute(stmt)
             await session.commit()
             return result.scalar()
-    
+
     @classmethod
     async def detail_info_chat_group(cls, id_chat: int):
         async with async_session_maker() as session:
@@ -126,10 +159,10 @@ class ChatDAO(BaseDAO):
             )
             result = await session.execute(stmt)
             return result.mappings().all()
-    
+
 class MessagesDAO(BaseDAO):
     model = Messages
-    
+
     @classmethod
     async def detail(cls, id_chat: int):
         async with async_session_maker() as session:
@@ -141,7 +174,7 @@ class MessagesDAO(BaseDAO):
             )
             result = await session.execute(query)
             return result.mappings().all()
-    
+
     @classmethod
     async def create(cls, text_message: str, id_chat: int, id_send_user: int):
         async with async_session_maker() as session:
@@ -153,7 +186,7 @@ class MessagesDAO(BaseDAO):
             result = await session.execute(stmt)
             await session.commit()
             return result.scalar()
-    
+
     @classmethod
     async def delete(cls, id_chat: int):
         async with async_session_maker() as session:
